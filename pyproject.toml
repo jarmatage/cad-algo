@@ -1,0 +1,65 @@
+[build-system]
+requires = ["setuptools >= 64.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cad-algo"
+description = "Assignments for CEN 503"
+requires-python = ">=3.13"
+dependencies = [
+	"lark",
+]
+dynamic = ["version"]
+
+[tool.setuptools.dynamic]
+version = { attr = "cad_algo.__version__"}
+
+[project.scripts]
+cad-algo = "cad_algo.cli.cli:cli"
+
+[project.optional-dependencies]
+dev = [
+	"build",
+	"mypy",
+	"pytest",
+	"pytest-cov",
+	"ruff",
+]
+
+[tool.setuptools]
+zip-safe = false
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+cad_algo = ["py.typed"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+
+[tool.pytest.ini_options]
+minversion = 8.0
+addopts = "-ra --cov=cad_algo --cov-report term-missing --basetemp=tests/tmp"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+	"D203",		# ignore one-blank-line-before-class
+	"D212",		# ignore multi-line-summary-first-line
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = [
+	"PLR2004", 	# ignore magic-value-comparison
+	"S101", 	# ignore assert
+	"T201", 	# ignore print
+	"F401",		# ignore ununsed-import
+]
+"hw/*" = ["ALL"]
