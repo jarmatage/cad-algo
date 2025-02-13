@@ -51,6 +51,7 @@ target-version = "py313"
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [
+	"COM812",   # ignore missing-trailing-comma
 	"D203",		# ignore one-blank-line-before-class
 	"D212",		# ignore multi-line-summary-first-line
 ]
