@@ -5,16 +5,19 @@ from typing import ClassVar
 
 from .sop import SOP
 
+Bit = bool | None
+CubeType = tuple[Bit, ...]
 
-class BaseCube(tuple):
+
+class BaseCube(CubeType):
     """A tuple where all instances must be the same length."""
 
     __slots__ = ()
     size: int = 3
     verbose: bool = False
     varlist: ClassVar[list[str]] = []
-    zero: "BaseCube" = None
-    one: "BaseCube" = None
+    zero: "BaseCube"
+    one: "BaseCube"
 
     @classmethod
     def multichar(cls) -> bool:
@@ -42,10 +45,10 @@ class BaseCube(tuple):
     @classmethod
     def onehot(cls, index: int, *, bit: bool = True) -> "BaseCube":
         """Create a cube object which is don't care everywhere except a single bit."""
-        one = [None] * cls.size
-        return cls(one[:index] + [bit] + one[index + 1 :])
+        one = (None,) * cls.size
+        return cls(one[:index] + (bit,) + one[index + 1 :])
 
-    def __new__(cls, cube: tuple) -> "BaseCube":
+    def __new__(cls, cube: CubeType = ()) -> "BaseCube":
         """
         Ensure the input tuple is the correct size and contains valid values.
 
@@ -53,9 +56,9 @@ class BaseCube(tuple):
         corresponds to a boolean 1. Each element of the input tuple must either be True,
         False, or None.
         """
-        if cls.zero is None:
+        if not hasattr(cls, "zero"):
             cls.zero = super().__new__(cls, ())
-        if cls.one is None:
+        if not hasattr(cls, "one"):
             cls.one = super().__new__(cls, (None,) * cls.size)
 
         if len(cube) != 0 and len(cube) != cls.size:
@@ -81,42 +84,55 @@ class BaseCube(tuple):
         """Check if the cube is the one special cube."""
         return self == self.__class__.one
 
-    def __add__(self, other: "BaseCube | SOP") -> "BaseCube | SOP":
-        """Add another cube or a sum of products to this cube."""
+    def __and__(self, other: CubeType) -> "BaseCube":
+        """Compute the product of this cube with another cube."""
         if isinstance(other, SOP):
-            return other + self
-        if self <= other:
-            return other
-        if other < self:
-            return self
-        return SOP({self, other})
+            return NotImplemented
+        other = self.__class__(other)
 
-    def __invert__(self) -> SOP:
+        if self.is_zero or other.is_zero:
+            return self.__class__.zero
+        if self.is_one:
+            return other
+        if other.is_one or self == other:
+            return self
+
+        literals = []
+        for l1, l2 in zip(self, other, strict=True):
+            if l1 == l2 or l1 is None or l2 is None:
+                literals.append(l2 if l1 is None else l1)
+            else:
+                return self.__class__.zero
+        return self.__class__(tuple(literals))
+
+    def __invert__(self) -> "BaseCube | SOP":
         """Apply De Morgan's law to covert this cube into a sum of products."""
         if self.is_zero:
             return self.__class__.one
         if self.is_one:
             return self.__class__.zero
 
-        cubes = []
+        cubes = set()
         for i, bit in enumerate(self):
             if bit is not None:
-                cubes.append(self.__class__.onehot(i, bit=(not bit)))
+                cubes.add(self.__class__.onehot(i, bit=(not bit)))
         return SOP(cubes)
 
-    def __le__(self, other: "BaseCube") -> bool:
+    def __le__(self, other: CubeType) -> bool:
         """Return True is this cube is properly contained in another cube."""
+        other = self.__class__(other)
         if other.is_zero or self.is_one:
             return False
         if self.is_zero or other.is_one:
             return True
         return other.cofactor(self).is_one
 
-    def __lt__(self, other: "BaseCube") -> bool:
+    def __lt__(self, other: CubeType) -> bool:
         """Return True if this cube is contained in and not equal to another cube."""
+        other = self.__class__(other)
         return self != other and self <= other
 
-    def __mod__(self, other: "BaseCube") -> "BaseCube| None":
+    def __mod__(self, other: CubeType) -> "BaseCube| None":
         """
         Compute the consensus between this cube and another cube.
 
@@ -124,6 +140,7 @@ class BaseCube(tuple):
         cubes have a consensus, if there is exactly one True literal in one cube and the
         corresponding literal in the other cube is False.
         """
+        other = self.__class__(other)
         consensus = []
         found_opposition = False
 
@@ -138,28 +155,19 @@ class BaseCube(tuple):
                 found_opposition = True
                 consensus.append(None)
 
-        return self.__class__(consensus)
+        return self.__class__(tuple(consensus))
 
-    def __mul__(self, other: "BaseCube | SOP") -> "BaseCube | SOP":
-        """Compute the product of this cube with another cube or a SOP."""
-        if self.is_zero or other.is_zero:
-            return self.__class__.zero
-        if self.is_one:
-            return other
-        if other.is_one or self == other:
-            return self
+    def __or__(self, other: CubeType | SOP) -> "BaseCube | SOP":
+        """Add another cube or a sum of products to this cube."""
         if isinstance(other, SOP):
-            return other * self
+            return other + self
+        other = self.__class__(other)
 
-        literals = []
-        for l1, l2 in zip(self, other, strict=True):
-            if l1 is None:
-                literals.append(l2)
-            elif l2 is None or l1 == l2:
-                literals.append(l1)
-            else:
-                return self.__class__.zero
-        return self.__class__(literals)
+        if self <= other:
+            return other
+        if other < self:
+            return self
+        return SOP({self, other})
 
     def __repr__(self) -> str:
         """
@@ -186,8 +194,10 @@ class BaseCube(tuple):
 
         return ("*" if self.__class__.multichar() else "").join(chars)
 
-    def __truediv__(self, other: "BaseCube") -> tuple["BaseCube", "BaseCube"]:
+    def __truediv__(self, other: CubeType) -> tuple["BaseCube", "BaseCube"]:
         """Compute this cube divided by another cube."""
+        other = self.__class__(other)
+
         if self.is_zero:
             quotient = self.__class__.zero
             remainder = self.__class__.zero
@@ -195,9 +205,8 @@ class BaseCube(tuple):
             quotient = self.__class__.zero
             remainder = self
         else:
-            zipper = zip(self, other, strict=True)
-            quotient = tuple(None if l1 == l2 else l1 for l1, l2 in zipper)
-            quotient = self.__class__(quotient)
+            cube = [None if x == y else x for x, y in zip(self, other, strict=True)]
+            quotient = self.__class__(tuple(cube))
             remainder = self.__class__.zero
         return quotient, remainder
 
@@ -223,10 +232,10 @@ class BaseCube(tuple):
             if (c1 is True and c2 is False) or (c1 is False and c2 is True):
                 return self.__class__.zero
             result.append(c1 if c2 is None else None)
-        return self.__class__(result)
+        return self.__class__(tuple(result))
 
 
-def cube_factory(cube_size: int = 3, *, show_dc: bool = False) -> BaseCube:
+def cube_factory(cube_size: int = 3, *, show_dc: bool = False) -> type[BaseCube]:
     """Dynamically create a Cube class with a desired fixed size."""
     if not (isinstance(cube_size, int) and cube_size > 0):
         msg = f"Invalid cube size '{cube_size}'. Must be positive int."

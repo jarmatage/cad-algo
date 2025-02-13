@@ -27,6 +27,7 @@ def parse_bool_expr(expression: str, *, cube_cls: type[BaseCube]) -> ParseTree:
     """Parse a boolean expression using Lark."""
     parser = Lark(GRAMMER, parser="lalr", transformer=BoolTransformer(cube_cls))
     try:
-        parser.parse(expression)
+        return parser.parse(expression)
     except exceptions.LarkError as e:
-        return f"Error parsing expression: {e}"
+        msg = "Error parsing Boolean expression."
+        raise ValueError(msg) from e
