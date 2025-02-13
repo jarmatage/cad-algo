@@ -5,10 +5,10 @@ from functools import reduce
 
 from .cube import BaseCube
 
-MINIMIZE = True
-
 CubeSet = set[BaseCube]
 AbstractCubeSet = AbstractSet[BaseCube | None]
+
+MINIMIZE = True
 
 
 class SOP(CubeSet):

@@ -23,7 +23,7 @@ GRAMMER = r"""
 """
 
 
-def parse_bool_expr(expression: str, *, cube_cls: type[BaseCube]) -> ParseTree:
+def parse_bool_expr(expression: str, cube_cls: type[BaseCube] = BaseCube) -> ParseTree:
     """Parse a boolean expression using Lark."""
     parser = Lark(GRAMMER, parser="lalr", transformer=BoolTransformer(cube_cls))
     try:

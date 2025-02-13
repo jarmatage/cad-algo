@@ -5,8 +5,7 @@ from typing import ClassVar
 
 from .sop import SOP
 
-Bit = bool | None
-CubeType = tuple[Bit, ...]
+CubeType = tuple[bool | None, ...]
 
 
 class BaseCube(CubeType):
