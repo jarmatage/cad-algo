@@ -89,7 +89,7 @@ class BaseCube(tuple):
             return other
         if other < self:
             return self
-        return SOP(self, other).minimal_scc()
+        return SOP({self, other})
 
     def __invert__(self) -> SOP:
         """Apply De Morgan's law to covert this cube into a sum of products."""
@@ -110,7 +110,7 @@ class BaseCube(tuple):
             return False
         if self.is_zero or other.is_one:
             return True
-        return other._cofactor(self).is_one
+        return other.cofactor(self).is_one
 
     def __lt__(self, other: "BaseCube") -> bool:
         """Return True if this cube is contained in and not equal to another cube."""
@@ -140,6 +140,27 @@ class BaseCube(tuple):
 
         return self.__class__(consensus)
 
+    def __mul__(self, other: "BaseCube | SOP") -> "BaseCube | SOP":
+        """Compute the product of this cube with another cube or a SOP."""
+        if self.is_zero or other.is_zero:
+            return self.__class__.zero
+        if self.is_one:
+            return other
+        if other.is_one or self == other:
+            return self
+        if isinstance(other, SOP):
+            return other * self
+
+        literals = []
+        for l1, l2 in zip(self, other, strict=True):
+            if l1 is None:
+                literals.append(l2)
+            elif l2 is None or l1 == l2:
+                literals.append(l1)
+            else:
+                return self.__class__.zero
+        return self.__class__(literals)
+
     def __repr__(self) -> str:
         """
         Represent the Cube with a string of variable names.
@@ -165,7 +186,22 @@ class BaseCube(tuple):
 
         return ("*" if self.__class__.multichar() else "").join(chars)
 
-    def _cofactor(self, cube: "BaseCube") -> "BaseCube":
+    def __truediv__(self, other: "BaseCube") -> tuple["BaseCube", "BaseCube"]:
+        """Compute this cube divided by another cube."""
+        if self.is_zero:
+            quotient = self.__class__.zero
+            remainder = self.__class__.zero
+        elif not self <= other:
+            quotient = self.__class__.zero
+            remainder = self
+        else:
+            zipper = zip(self, other, strict=True)
+            quotient = tuple(None if l1 == l2 else l1 for l1, l2 in zipper)
+            quotient = self.__class__(quotient)
+            remainder = self.__class__.zero
+        return quotient, remainder
+
+    def cofactor(self, cube: "BaseCube") -> "BaseCube":
         """
         Compute the cofactor of the cube with respect to another cube.
 
