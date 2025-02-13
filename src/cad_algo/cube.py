@@ -13,7 +13,7 @@ class BaseCube(CubeType):
     """A tuple where all instances must be the same length."""
 
     __slots__ = ()
-    size: int = 3
+    size: int = 6
     verbose: bool = False
     varlist: ClassVar[list[str]] = []
     zero: "BaseCube"
@@ -84,26 +84,17 @@ class BaseCube(CubeType):
         """Check if the cube is the one special cube."""
         return self == self.__class__.one
 
-    def __and__(self, other: CubeType) -> "BaseCube":
-        """Compute the product of this cube with another cube."""
+    def __add__(self, other: CubeType | SOP) -> "BaseCube | SOP":  # type: ignore[override]
+        """Add another cube or a sum of products to this cube."""
         if isinstance(other, SOP):
-            return NotImplemented
+            return other + self
         other = self.__class__(other)
 
-        if self.is_zero or other.is_zero:
-            return self.__class__.zero
-        if self.is_one:
+        if self <= other:
             return other
-        if other.is_one or self == other:
+        if other < self:
             return self
-
-        literals = []
-        for l1, l2 in zip(self, other, strict=True):
-            if l1 == l2 or l1 is None or l2 is None:
-                literals.append(l2 if l1 is None else l1)
-            else:
-                return self.__class__.zero
-        return self.__class__(tuple(literals))
+        return SOP({self, other})
 
     def __invert__(self) -> "BaseCube | SOP":
         """Apply De Morgan's law to covert this cube into a sum of products."""
@@ -157,17 +148,26 @@ class BaseCube(CubeType):
 
         return self.__class__(tuple(consensus))
 
-    def __or__(self, other: CubeType | SOP) -> "BaseCube | SOP":
-        """Add another cube or a sum of products to this cube."""
-        if isinstance(other, SOP):
-            return other + self
+    def __mul__(self, other: CubeType) -> "BaseCube":  # type: ignore[override]
+        """Compute the product of this cube with another cube."""
+        if not isinstance(other, self.__class__):
+            return NotImplemented
         other = self.__class__(other)
 
-        if self <= other:
+        if self.is_zero or other.is_zero:
+            return self.__class__.zero
+        if self.is_one:
             return other
-        if other < self:
+        if other.is_one or self == other:
             return self
-        return SOP({self, other})
+
+        literals = []
+        for l1, l2 in zip(self, other, strict=True):
+            if l1 == l2 or l1 is None or l2 is None:
+                literals.append(l2 if l1 is None else l1)
+            else:
+                return self.__class__.zero
+        return self.__class__(tuple(literals))
 
     def __repr__(self) -> str:
         """

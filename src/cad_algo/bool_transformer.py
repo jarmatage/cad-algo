@@ -8,7 +8,7 @@ from .cube import BaseCube
 from .sop import SOP
 
 
-class BoolTransformer(Transformer):
+class BoolTransformer(Transformer[str, BaseCube | SOP]):
     """Boolean expression transformer."""
 
     def __init__(self, cube_cls: type[BaseCube]) -> None:
@@ -21,22 +21,22 @@ class BoolTransformer(Transformer):
         super().__init__()
 
     @v_args(inline=True)
-    def disjunction(self, *args: tuple[BaseCube]) -> SOP:
+    def disjunction(self, *args: BaseCube | SOP) -> BaseCube | SOP:
         """OR."""
         return reduce(lambda x, y: x + y, args)
 
     @v_args(inline=True)
-    def conjunction(self, *args: tuple[BaseCube]) -> BaseCube:
+    def conjunction(self, *args: BaseCube | SOP) -> BaseCube | SOP:
         """AND."""
         return reduce(lambda x, y: x * y, args)
 
     @v_args(inline=True)
-    def exor(self, *args: tuple[BaseCube]) -> SOP:
+    def exor(self, *args: BaseCube | SOP) -> BaseCube | SOP:
         """XOR."""
         return reduce(lambda x, y: ~x * y + x * ~y, args)
 
     @v_args(inline=True)
-    def complement(self, arg: BaseCube) -> BaseCube:
+    def complement(self, arg: BaseCube) -> BaseCube | SOP:
         """NOT."""
         return ~arg
 
@@ -57,9 +57,9 @@ class BoolTransformer(Transformer):
         if lit in self._cube_cls.varlist:
             index = self._cube_cls.varlist.index(lit)
         elif len(self._cube_cls.varlist) >= self._cube_cls.size:
-            msg = f"Cube variable names has already reached max size '{self.max_size}'"
+            msg = f"Cube varlist has already reached max size '{self._cube_cls.size}'"
             raise ValueError(msg)
         else:
             index = len(self._cube_cls.varlist)
             self._cube_cls.varlist.append(lit)
-        return self._cube_cls.one_hot(index)
+        return self._cube_cls.onehot(index)

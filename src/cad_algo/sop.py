@@ -93,7 +93,7 @@ class SOP(CubeSet):
         if any(c.is_one for c in other):
             return self
 
-        return SOP({c1 & c2 for c1 in self for c2 in other})
+        return SOP({c1 * c2 for c1 in self for c2 in other})
 
     def __rmul__(self, other: "BaseCube | SOP") -> "SOP":
         """Account for when a cube is the left operator in multiplication."""
