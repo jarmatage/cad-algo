@@ -64,4 +64,3 @@ ignore = [
 	"T201", 	# ignore print
 	"F401",		# ignore ununsed-import
 ]
-"hw/*" = ["ALL"]
