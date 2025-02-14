@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+"""CEN 503: Algorithms for CAD of Digital Systems, Homework 1."""
+
 import string
-from itertools import combinations
-from typing import ClassVar
 from collections.abc import Set as AbstractSet
 from functools import reduce
+from itertools import combinations
+from typing import ClassVar
 
-from lark import Lark, Token, Tree, exceptions, Transformer, v_args
-
+from lark import Lark, Transformer, exceptions, v_args
 
 GRAMMER = r"""
     start: expr
@@ -422,14 +422,14 @@ class SOP(CubeSet):
         copy = SOP(self.copy())
         while True:
             copy.minimize()
-            consensus = {c1 % c2 for c1, c2 in combinations(list(copy), 2)}
+            consensus = {c1 % c2 for c1, c2 in combinations(copy, 2)}
             consensus = {c for c in consensus if not c.is_zero}
             if consensus < copy:
                 break
             copy += consensus
         return copy
 
-    def isTautology(self) -> bool:
+    def isTautology(self) -> bool:  # noqa: N802
         """
         Return True if the sum of products is a tautology.
 
