@@ -130,8 +130,10 @@ class BaseCube(CubeType):
                 cubes.add(self.__class__.onehot(i, bit=(not bit)))
         return cubes.pop() if len(cubes) == 1 else SOP(cubes)
 
-    def __le__(self, other: CubeType) -> bool:
+    def __le__(self, other: "CubeType | SOP") -> bool:
         """Return True is this cube is properly contained in another cube."""
+        if isinstance(other, SOP):
+            return any(self <= c for c in other)
         other = self.__class__(other)
         if other.is_zero or self.is_one:
             return False
@@ -139,8 +141,10 @@ class BaseCube(CubeType):
             return True
         return other.cofactor(self).is_one
 
-    def __lt__(self, other: CubeType) -> bool:
+    def __lt__(self, other: "CubeType | SOP") -> bool:
         """Return True if this cube is contained in and not equal to another cube."""
+        if isinstance(other, SOP):
+            return any(self < c for c in other)
         other = self.__class__(other)
         return self != other and self <= other
 
@@ -255,6 +259,14 @@ class BaseCube(CubeType):
             result.append(c1 if c2 is None else None)
         return self.__class__(tuple(result))
 
+    def bit_cofact(self, index: int, *, bit: bool = True) -> "BaseCube":
+        """
+        Perform cofactor with a one-hot cube.
+
+        In other words, compute the cofactor with respect to a single literal.
+        """
+        return self.cofactor(self.onehot(index, bit=bit))
+
 
 def cube_factory(cube_size: int = 3, *, show_dc: bool = False) -> type[BaseCube]:
     """Dynamically create a Cube class with a desired fixed size."""
@@ -305,8 +317,10 @@ class SOP(CubeSet):
     @staticmethod
     def sort_key(cube: BaseCube) -> tuple[int, int, int]:
         """Key command for sorting the cubes of a SOP."""
+        if cube.is_zero:
+            return 0, 0, 0
         index = next((i for i, x in enumerate(cube) if x is not None), -1)
-        return (len(cube) - cube.count(None), index, int(not cube[index]))
+        return len(cube) - cube.count(None), index, int(not cube[index])
 
     def __repr__(self) -> str:
         """Represent the sum of products as cubes separated by '+' signs."""
@@ -357,19 +371,6 @@ class SOP(CubeSet):
             quotient = reduce(lambda s1, s2: s1 * s2, quotients)
         return quotient, self - quotient * other
 
-    def __le__(self, other: CubeSet) -> bool:  # type: ignore[override]
-        """
-        Check if every cube in this set is contained in a cube of another set.
-
-        Will only return true if every cube is contained within another specific cube
-        in the other sum of products.
-        """
-        for c1 in self:
-            if any(c1 <= c2 for c2 in other):
-                continue
-            return False
-        return True
-
     def cofactor(self, cube: BaseCube) -> "SOP":
         """Compute the cofactor of each cube in the SOP with respect to another cube."""
         return SOP({c.cofactor(cube) for c in self})
@@ -411,35 +412,62 @@ class SOP(CubeSet):
         completness property that no cube is contained in any other cube.
 
         Next, the consensus of every possible cube pair is calculated. The result
-        is a set of all non-zero consensus values for the copy. If the consensus set is
-        empty, the copy must be complete. Similarly, if every consensus is contained
+        is a set of all consensus values for the copy. If every consensus is contained
         within a cube of the copy, the copy must be complete.
 
-        If the copy is not complete, we add the consensus set to the copy and start
+        We iteratively check if each consensus is contained in the copy.
+        If the copy is not complete, we add the consensus to the copy and start
         over again with the minimization process. This cycle repeats until the copy
         is complete.
         """
         copy = SOP(self.copy())
         while True:
+            finished = True
             copy.minimize()
-            consensus = {c1 % c2 for c1, c2 in combinations(copy, 2)}
-            consensus = {c for c in consensus if not c.is_zero}
-            if consensus < copy:
+            for consensus in {c1 % c2 for c1, c2 in combinations(copy, 2)}:
+                if not (consensus <= copy):
+                    copy.add(consensus)
+                    finished = False
+                    break
+            if finished:
                 break
-            copy += consensus
         return copy
+
+    def bit_cofact(self, index: int, *, bit: bool = True) -> "SOP":
+        """Compute the cofactor of the SOP with respect to a single literal."""
+        if len(self) == 0:
+            return self
+        literal = next(iter(self)).onehot(index, bit=bit)
+        return self.cofactor(literal)
 
     def isTautology(self) -> bool:  # noqa: N802
         """
         Return True if the sum of products is a tautology.
 
-        A copy of the SOP is worked on so as to not pollute this object.
-        The copy is converted into a complete SOP. If the complete SOP contains
-        a cube where the is_one attribute is True, the original object must
-        represent a tautology.
+        A copy of the SOP is worked on so as to not pollute this object. The copy is
+        converted into a complete SOP to help reduce the number of cofactors
+        computations needed. If the copy contains a 1 in it, we can claim the SOP is
+        a tautology and end early.
+
+        Next we compute the one and zero cofactor for the first
+        literal in the cube. If both cofactors contain a 1, we can claim the SOP is
+        a tautology. Else, we enter a recursion and compute the cofactor for the next
+        literal in the cube. This contains until a tautology is found or we run through
+        all the literals.
         """
-        copy = SOP(self.copy())
-        return any(c.is_one for c in copy.complete())
+        return SOP(self.copy()).complete().rtautology()
+
+    def rtautology(self, i: int = 0) -> bool:
+        """Recursively check if the one and zero cofactors are tautologies."""
+        if len(self) == 0 or all(c.is_zero for c in self):
+            return False
+        if any(c.is_one for c in self):
+            return True
+        if i >= next(iter(self)).__class__.size:
+            return False
+        one_cofactor = self.bit_cofact(i, bit=True)
+        zero_cofactor = self.bit_cofact(i, bit=False)
+        return one_cofactor.rtautology(i + 1) and zero_cofactor.rtautology(i + 1)
 
 
 Expr = BaseCube | SOP
