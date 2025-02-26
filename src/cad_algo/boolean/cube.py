@@ -38,6 +38,11 @@ class BaseCube:
         """Return a cube that represents a boolean 1."""
         return cls((None,) * cls._size)
 
+    @classmethod
+    def literal(cls, index: int, *, bit: bool = True) -> "BaseCube":
+        """Return a cube that represents a single literal."""
+        return cls(one_hot(cls._size, index, bit=bit))
+
     def __new__(cls, bits: BitSequence = ()) -> "BaseCube":
         """Ensure the input is the correct size."""
         if len(bits) == 0 or len(bits) == cls._size:
