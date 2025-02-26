@@ -1,5 +1,6 @@
 """Class defintion for a boolean sum of products (SOP)."""
 
+from collections.abc import Iterable
 from collections.abc import Set as AbstractSet
 from functools import reduce
 from itertools import combinations
@@ -19,19 +20,31 @@ class BaseSOP(CubeSet):
     cube: type[BaseCube] = BaseCube
     minimal: bool = False
 
-    def __new__(cls, cubes: CubeSet) -> "BaseSOP":
+    @classmethod
+    def zero(cls) -> "BaseSOP":
+        """Return a SOP that represents a boolean 0."""
+        return cls()
+
+    @classmethod
+    def one(cls) -> "BaseSOP":
+        """Return a SOP that represents a boolean 1."""
+        return cls({cls.cube.one()})
+
+    def __new__(cls, cubes: Iterable[BaseCube] = ()) -> "BaseSOP":
         """Ensure the input consists of valid cubes."""
         for c in cubes:
             if not isinstance(c, cls.cube):
                 raise InvalidCubeError(c)
         return super().__new__(cls)
 
-    def __init__(self, cubes: CubeSet) -> None:
+    def __init__(self, cubes: Iterable[BaseCube] = ()) -> None:
         """Initialize and minimize a SOP."""
-        cubes.discard(self.__class__.cube.zero())
         if any(c == 1 for c in cubes):
-            cubes = {self.__class__.cube.one()}
-        super().__init__(cubes)
+            cube_set = {self.__class__.cube.one()}
+        else:
+            cube_set = set(cubes)
+            cube_set.discard(self.__class__.cube.zero())
+        super().__init__(cube_set)
         if self.__class__.minimal:
             self.minimize()
 
@@ -193,3 +206,69 @@ class BaseSOP(CubeSet):
         one_cofactor = self.literal_cofact(i, bit=True)
         zero_cofactor = self.literal_cofact(i, bit=False)
         return one_cofactor.rtautology(i + 1) and zero_cofactor.rtautology(i + 1)
+
+    @staticmethod
+    def is_prime(f_on: "BaseSOP", f_dc: "BaseSOP", cube: BaseCube) -> bool:
+        """
+        Check if a given cube is a prime implicant of a completely specified function.
+
+        A completely specified boolean fuction requires the specification of two
+        covers: f_on and f_dc. The f_on cover represents all inputs where the output of
+        the function is 1. The f_dc cover represents all inputs where we don't care
+        what the output of the function is.
+
+        We need to make sure any prime implicants of f_on cannot be expanded due to
+        don't care minterms in f_dc. Because of this, we add f_on and f_dc together and
+        compute the complete cover of the new SOP. If the given cube is in the complete
+        cover, it must be a prime implicant of the function f.
+        """
+        return cube in (f_on + f_dc).complete()
+
+    def best_ucp_literal(self) -> tuple[int, bool | None, int]:
+        """
+        Find the literal with the strongest unateness in this SOP.
+
+        A SOP is positive unate in a literal if the literal never appears negated within
+        the SOP. In other words, the bit associated with that literal only stores True
+        (1) or None (don't care). Similarly, a SOP is negative unate in a literal if the
+        bit associated with that literal only stores False (0) or None (don't care).
+
+        There could be multiple literals that have unateness. In this case, the literal
+        with the least number of don't cares is best.
+        """
+        result: tuple[int, bool | None, int] = 0, None, len(self) + 1
+        for i in range(self.__class__.cube.size()):
+            if all(x.bits[i] is not False for x in self):
+                pos_unate = True
+            elif all(x.bits[i] is not True for x in self):
+                pos_unate = False
+            else:
+                continue
+            if (count := sum(x.bits[i] is None for x in self)) == 0:
+                return i, pos_unate, 0
+            if count < result[2]:
+                result = i, pos_unate, count
+        return result
+
+    def literal(self, index: int, *, bit: bool = True) -> BaseCube:
+        """Return a cube that represents a single literal."""
+        return self.__class__.cube.literal(index, bit=bit)
+
+    def complement(self) -> "BaseSOP":
+        """Return the complement of this SOP."""
+        if self == 0:
+            return self.__class__.one()
+        if self == 1:
+            return self.__class__.zero()
+
+        index, pos_unate, _ = self.best_ucp_literal()
+        pos_cofactor = self.literal_cofact(index, bit=True)
+        neg_cofactor = self.literal_cofact(index, bit=False)
+        lpos = self.literal(index, bit=True)
+        lneg = self.literal(index, bit=False)
+
+        if pos_unate is True:
+            return pos_cofactor.complement() + neg_cofactor.complement() * lneg
+        if pos_unate is False:
+            return pos_cofactor.complement() * lpos + neg_cofactor.complement()
+        return pos_cofactor.complement() * lpos + neg_cofactor.complement() * lneg
