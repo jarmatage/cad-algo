@@ -6,9 +6,10 @@ Created on Fri Feb 28 14:59:14 2025
 @author: svrudhul
 """
 
+from HW1_Armatage_Joaquin import parse_boolean_expression
+
 
 def Vrudhula_test_isTautology():
-
     e1str = "w*~y + x*y + ~w*~z + w*~x*~y + x*~z"
     e1 = parse_boolean_expression(e1str).children[-1]
     print(f"e1 = w*~y + x*y + ~w*~z + w*~x*~y + x*~z.  Result: {e1}")

@@ -7,7 +7,7 @@ from functools import reduce
 from itertools import combinations
 from typing import ClassVar
 
-from lark import Lark, Transformer, exceptions, v_args
+from lark import Lark, Token, Transformer, Tree, exceptions, v_args
 
 GRAMMER = r"""
     start: expr
@@ -539,6 +539,16 @@ def parse_bool_expr(expr: str, cube_cls: type[BaseCube] = BaseCube) -> Expr:
             return token
         msg = f"Parse result is of invalid type '{type(token)}'"
         raise TypeError(msg)
+    except exceptions.LarkError as e:
+        msg = "Error parsing Boolean expression."
+        raise ValueError(msg) from e
+
+
+def parse_boolean_expression(expr: str) -> Tree[Token]:
+    """Parse a boolean expression using Lark."""
+    parser = Lark(GRAMMER, parser="lalr", transformer=BoolTransformer(BaseCube))
+    try:
+        return parser.parse(expr)
     except exceptions.LarkError as e:
         msg = "Error parsing Boolean expression."
         raise ValueError(msg) from e
