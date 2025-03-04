@@ -37,7 +37,7 @@ def print_test(name: str, input_str: str, result: Expr, expected: str) -> None:
     print(f"\tInput:    '{input_str}'")
     print(f"\tResult:   '{result}'")
     print(f"\tExpected: '{expected}'")
-    if str(result) != expected:
+    if set(str(result).split(" + ")) != set(expected.split(" + ")):
         msg = f"Result for test '{name}' does not match expectation."
         raise ValueError(msg)
 
@@ -163,6 +163,29 @@ def testsop() -> None:  # noqa: PLR0915
     )
     assert isinstance(expr, SOP)
     print_bool("isTautology", str(expr), result=expr.isTautology(), expected=True)
+
+    print("\n***** Testing Incomplete Function *****")
+
+    f_on = parse_bool_expr("b*~c + ~a*b*d + a*c*d + a*~b*c + b*c*d")
+    assert isinstance(f_on, SOP)
+    f_dc = parse_bool_expr("a'*b'*d + a*b'*c' + a*b*c*d'")
+    assert isinstance(f_dc, SOP)
+    print(f"f_on = {f_on}")
+    print(f"f_dc = {f_dc}")
+    print(f"prime implicants = {f_on.incomplete(f_dc)}")
+    print(f"f_off = {~(f_on + f_dc)}")
+
+    print("\n***** Testing Complement *****")
+
+    expr = parse_bool_expr("a*~c + b*c + ~a*~d + a*~b*~c + b*~d")
+    assert isinstance(expr, SOP)
+    print_test("Complement SOP", f"~({expr})", expr.complement(), str(~expr))
+    expr = parse_bool_expr("b*c + ~b*c*d + b*~c")
+    assert isinstance(expr, SOP)
+    print_test("Complement SOP", f"~({expr})", expr.complement(), str(~expr))
+    expr = parse_bool_expr("a*b*c + a*c*~d + ~a*~b*~c + ~a*d + b*~c + ~a*c")
+    assert isinstance(expr, SOP)
+    print_test("Complement SOP", f"~({expr})", expr.complement(), str(~expr))
 
 
 if __name__ == "__main__":

@@ -469,6 +469,102 @@ class SOP(CubeSet):
         zero_cofactor = self.bit_cofact(i, bit=False)
         return one_cofactor.rtautology(i + 1) and zero_cofactor.rtautology(i + 1)
 
+    def incomplete(self, f_dc: "SOP") -> "SOP":
+        """
+        Compute the prime implicants of an incompletely specified function.
+
+        It is assumed that this SOP is the on-set of the function and that the
+        input to this function is the don't care set (dc-set) of the function.
+
+        It is also assumed that the on-set and the dc-set are independent sets
+        with no overlapping minterms.
+
+        The prime implicants of the on-set plus the dc-set are computed. Any
+        primte implicants that is also a prime implicant of the dc-set is removed.
+        """
+        if self.isTautology():
+            return self.__class__({BaseCube.one})
+        if len(self) == 0 or all(c.is_zero for c in self):
+            return self
+        f_on = self.complete()
+        f_dc = f_dc.complete()
+        return (f_on + f_dc).complete() - f_dc
+
+    @staticmethod
+    def is_prime(f_on: "SOP", f_dc: "SOP", cube: BaseCube) -> bool:
+        """
+        Check if a given cube is a prime implicant of an incomplete function.
+
+        An incompletely specified boolean fuction requires the specification of two
+        covers: f_on and f_dc. The f_on cover represents all inputs where the output of
+        the function is 1. The f_dc cover represents all inputs where we don't care
+        what the output of the function is.
+
+        We need to make sure any prime implicants of f_on cannot be expanded due to
+        don't care minterms in f_dc. Because of this, we add f_on and f_dc together and
+        compute the complete cover of the new SOP. If the given cube is in the complete
+        cover, it must be a prime implicant of the function f.
+        """
+        return cube in f_on.incomplete(f_dc)
+
+    def best_ucp_literal(self) -> tuple[int, bool | None, int]:
+        """
+        Find the literal with the strongest unateness in this SOP.
+
+        A SOP is positive unate in a literal if the literal never appears negated within
+        the SOP. In other words, the bit associated with that literal only stores True
+        (1) or None (don't care). Similarly, a SOP is negative unate in a literal if the
+        bit associated with that literal only stores False (0) or None (don't care).
+
+        There could be multiple literals that have unateness. In this case, the literal
+        with the least number of don't cares is best.
+        """
+        if len(self) == 0:
+            return 0, None, 0
+        size = next(iter(self)).__class__.size
+        unate_literals = []
+
+        for i in range(size):
+            if any(x[i] is False for x in self):
+                continue
+            if (count := sum(x[i] is True for x in self)) == 0:
+                continue
+            unate_literals.append((i, True, count))
+        for i in range(size):
+            if any(x[i] is True for x in self):
+                continue
+            if (count := sum(x[i] is False for x in self)) == 0:
+                continue
+            unate_literals.append((i, False, count))
+        if not unate_literals:
+            cube = next(iter(self))
+            return next(i for i, value in enumerate(cube) if value is not None), None, 0
+        return max(unate_literals, key=lambda x: x[2])
+
+    def literal(self, index: int, *, bit: bool = True) -> BaseCube:
+        """Return a cube that represents a single literal."""
+        return next(iter(self)).onehot(index, bit=bit)
+
+    def complement(self) -> "SOP":
+        """Return the complement of this SOP."""
+        if len(self) == 0 or all(c.is_zero for c in self):
+            return self.__class__({BaseCube.one})
+        if any(c.is_one for c in self) or self.isTautology():
+            return self.__class__({BaseCube.zero})
+
+        index, pos_unate, _ = self.best_ucp_literal()
+        print(f"sop = {self}, index = {index}, pos_unate = {pos_unate}")
+        pos_cofactor = self.bit_cofact(index, bit=True)
+        neg_cofactor = self.bit_cofact(index, bit=False)
+        lpos = self.literal(index, bit=True)
+        lneg = self.literal(index, bit=False)
+
+        if pos_unate is True:
+            return pos_cofactor.complement() + neg_cofactor.complement() * lneg
+        if pos_unate is False:
+            return pos_cofactor.complement() * lpos + neg_cofactor.complement()
+        return pos_cofactor.complement() * lpos + neg_cofactor.complement() * lneg
+
 
 Expr = BaseCube | SOP
 
