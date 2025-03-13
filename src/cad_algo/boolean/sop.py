@@ -8,7 +8,6 @@ from itertools import combinations
 from .cube import BaseCube
 from .exceptions import InvalidCubeError
 from .invert import de_morgans
-from .literal import sort_cube
 
 CubeSet = set[BaseCube]
 AbstractCubeSet = AbstractSet[BaseCube | None]
@@ -18,7 +17,7 @@ class BaseSOP(CubeSet):
     """A set of cubes which represents a sum of products."""
 
     cube: type[BaseCube] = BaseCube
-    minimal: bool = False
+    minimal: bool = True
 
     @classmethod
     def zero(cls) -> "BaseSOP":
@@ -66,6 +65,14 @@ class BaseSOP(CubeSet):
     def __invert__(self) -> "BaseSOP":
         """Return the complement of this SOP."""
         return reduce(lambda s1, s2: s1 * s2, [self.cube_invert(c) for c in self])
+
+    def __mod__(self, other: "BaseSOP") -> "BaseSOP":
+        """Compute the consensus between two SOPs that represent single cubes."""
+        if len(self) > 1 or len(other) > 1:
+            raise NotImplementedError
+        c1 = next(iter(self), self.__class__.cube.zero())
+        c2 = next(iter(other), other.__class__.cube.zero())
+        return self.__class__({c1 % c2})
 
     def __mul__(self, other: CubeSet | BaseCube) -> "BaseSOP":
         """Calculate the product between this SOP and another SOP or cube."""
@@ -207,6 +214,24 @@ class BaseSOP(CubeSet):
         zero_cofactor = self.literal_cofact(i, bit=False)
         return one_cofactor.rtautology(i + 1) and zero_cofactor.rtautology(i + 1)
 
+    def incomplete(self, f_dc: "BaseSOP") -> "BaseSOP":
+        """
+        Compute the prime implicants of an incompletely specified function.
+
+        It is assumed that this SOP is the on-set of the function and that the
+        input to this function is the don't care set (dc-set) of the function.
+
+        It is also assumed that the on-set and the dc-set are independent sets
+        with no overlapping minterms.
+        """
+        if self.is_tautology():
+            return self.__class__.one()
+        if self == 0:
+            return self
+        f_on = self.complete()
+        f_dc = f_dc.complete()
+        return (f_on + f_dc).complete() - f_dc
+
     @staticmethod
     def is_prime(f_on: "BaseSOP", f_dc: "BaseSOP", cube: BaseCube) -> bool:
         """
@@ -222,7 +247,7 @@ class BaseSOP(CubeSet):
         compute the complete cover of the new SOP. If the given cube is in the complete
         cover, it must be a prime implicant of the function f.
         """
-        return cube in (f_on + f_dc).complete()
+        return cube in f_on.incomplete(f_dc)
 
     def best_ucp_literal(self) -> tuple[int, bool | None, int]:
         """
@@ -236,19 +261,27 @@ class BaseSOP(CubeSet):
         There could be multiple literals that have unateness. In this case, the literal
         with the least number of don't cares is best.
         """
-        result: tuple[int, bool | None, int] = 0, None, len(self) + 1
+        if self == 0:
+            return 0, None, 0
+        unate_literals = []
+
         for i in range(self.__class__.cube.size()):
-            if all(x.bits[i] is not False for x in self):
-                pos_unate = True
-            elif all(x.bits[i] is not True for x in self):
-                pos_unate = False
-            else:
+            if any(x.bits[i] is False for x in self):
                 continue
-            if (count := sum(x.bits[i] is None for x in self)) == 0:
-                return i, pos_unate, 0
-            if count < result[2]:
-                result = i, pos_unate, count
-        return result
+            if (count := sum(x.bits[i] is True for x in self)) == 0:
+                continue
+            unate_literals.append((i, True, count))
+        for i in range(self.__class__.cube.size()):
+            if any(x.bits[i] is True for x in self):
+                continue
+            if (count := sum(x.bits[i] is False for x in self)) == 0:
+                continue
+            unate_literals.append((i, False, count))
+        if not unate_literals:
+            cube = next(iter(self))
+            index = next(i for i, value in enumerate(cube.bits) if value is not None)
+            return index, None, 0
+        return max(unate_literals, key=lambda x: x[2])
 
     def literal(self, index: int, *, bit: bool = True) -> BaseCube:
         """Return a cube that represents a single literal."""
