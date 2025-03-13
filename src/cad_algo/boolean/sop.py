@@ -82,8 +82,8 @@ class BaseSOP(CubeSet):
 
     def __repr__(self) -> str:
         """Represent the sum of products as cubes separated by '+' signs."""
-        cubes = sorted(self, key=lambda c: sort_cube(c.bits))
-        return "0" if len(self) == 0 else " + ".join([repr(c) for c in cubes])
+        cubes = sorted([repr(c) for c in self])
+        return "0" if len(self) == 0 else " + ".join(cubes)
 
     def __rmul__(self, other: CubeSet | BaseCube) -> "BaseSOP":
         """Account for when a cube is the left operator in multiplication."""
@@ -91,8 +91,8 @@ class BaseSOP(CubeSet):
 
     def __str__(self) -> str:
         """Print the sum of products as cubes separated by '+' signs."""
-        cubes = sorted(self, key=lambda c: sort_cube(c.bits))
-        return "0" if len(self) == 0 else " + ".join([str(c) for c in cubes])
+        cubes = sorted([str(c) for c in self])
+        return "0" if len(self) == 0 else " + ".join(cubes)
 
     def __sub__(self, other: AbstractCubeSet | BaseCube) -> "BaseSOP":
         """Compute the set difference between this SOP and another SOP or cube."""
