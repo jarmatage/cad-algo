@@ -63,7 +63,7 @@ class BaseCube:
         if isinstance(other, self.__class__):
             return self.bits == other.bits
         if other == 1:
-            return all(x is None for x in self.bits)
+            return all(x is None for x in self.bits) and len(self.bits) != 0
         if other == 0:
             return len(self.bits) == 0
         return NotImplemented
