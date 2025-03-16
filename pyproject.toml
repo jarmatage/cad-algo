@@ -46,8 +46,14 @@ python_version = "3.13"
 strict = true
 
 [tool.pytest.ini_options]
-minversion = 8.0
-addopts = "-ra --cov=cad_algo --cov-report term-missing --basetemp=tests/tmp"
+minversion = "8.0"
+addopts = [
+	"-ra",
+	"--cov=cad_algo",
+	"--cov-report",
+	"term-missing",
+	"--basetemp=tests/tmp"
+]
 testpaths = ["tests"]
 
 [tool.ruff]
@@ -69,3 +75,4 @@ ignore = [
 	"T201", 	# ignore print
 	"F401",		# ignore ununsed-import
 ]
+"hw/1/Vrudhula_test_isTautology.py" = ["ALL"]
