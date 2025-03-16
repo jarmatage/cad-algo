@@ -15,6 +15,7 @@ run: $(VENV)/bin/activate
 
 $(VENV)/bin/activate: pyproject.toml
 	$(PYTHON) -m venv $(VENV)
+	$(PIP) install --upgrade pip
 	$(PIP) install -e .[dev]
 
 clean:

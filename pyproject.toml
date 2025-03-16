@@ -1,3 +1,4 @@
+
 [build-system]
 requires = ["setuptools >= 64.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
@@ -8,6 +9,10 @@ description = "Assignments for CEN 503"
 requires-python = ">=3.13"
 dependencies = [
 	"lark",
+	"matplotlib",
+	"networkx",
+	"pygraphviz",
+	"types-networkx",
 ]
 dynamic = ["version"]
 
