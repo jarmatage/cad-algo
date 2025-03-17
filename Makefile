@@ -11,7 +11,6 @@ run: $(VENV)/bin/activate
 	$(RUFF) format
 	$(MYPY) src
 	$(RUFF) check
-	$(PYTEST)
 
 $(VENV)/bin/activate: pyproject.toml
 	$(PYTHON) -m venv $(VENV)

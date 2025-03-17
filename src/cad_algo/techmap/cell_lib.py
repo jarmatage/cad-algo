@@ -1,4 +1,33 @@
-"""Standard cell library."""
+"""
+The default standard cell library for CAD Algo.
+
+The CELL_LIB constant holds the default library which has the following standard cells:
+    - INV
+    - NAND2
+    - AND2
+    - NAND4-A
+    - NAND4-B
+    - OR2
+    - NOR2
+    - AOI22
+    - AOI21
+
+A standard cell library is defined as a dictionary where the keys are standard cell
+names and the values are tuples of cell information.
+
+CellLib Parameters
+------------------
+key : str
+    The name of the standard cell.
+value[0] : RootedDAG
+    The decomposed DAG structure of the standard cell.
+value[1] : int
+    The area of the standard cell.
+
+The CellLib type hint can be used to indicate a variable contains a dictionary for a
+standard cell library.
+
+"""
 
 from .rooted_dag import RootedDAG
 
