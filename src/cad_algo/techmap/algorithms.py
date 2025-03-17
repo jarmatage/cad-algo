@@ -6,7 +6,7 @@ from .tree_cover import LeafMap, TreeCover
 from .tree_node import TreeNode
 
 
-def match(s: TreeNode, p: TreeNode) -> tuple[bool, LeafMap]:
+def Match(s: TreeNode, p: TreeNode) -> tuple[bool, LeafMap]:  # noqa: N802
     """
     Recursively check if the nodes of a pattern match the nodes of a subject.
 
@@ -48,31 +48,31 @@ def match(s: TreeNode, p: TreeNode) -> tuple[bool, LeafMap]:
     if s.is_type("leaf") or s.degree != p.degree:
         return False, {}
     if s.is_type("inv"):
-        return match(s.inv_parent, p.inv_parent)
+        return Match(s.inv_parent, p.inv_parent)
 
     sleft, sright = s.nand_parents
     pleft, pright = p.nand_parents
 
-    match_l, leaves_l = match(sleft, pleft)
-    match_r, leaves_r = match(sright, pright)
+    match_l, leaves_l = Match(sleft, pleft)
+    match_r, leaves_r = Match(sright, pright)
     if match_l and match_r:
         return True, leaves_l | leaves_r
 
-    match_l, leaves_l = match(sleft, pright)
-    match_r, leaves_r = match(sright, pleft)
+    match_l, leaves_l = Match(sleft, pright)
+    match_r, leaves_r = Match(sright, pleft)
     return match_l and match_r, leaves_l | leaves_r
 
 
-def min_area_cover(circuit: RootedDAG, library: CellLib) -> TreeCover:
+def MinAreaCover(Circuit: RootedDAG, Library: CellLib) -> TreeCover:  # noqa: N802, N803
     """
     Compute the minimum area cover of a decomposed circuit tree.
 
     Parameters
     ----------
-    circuit : RootedDAG
+    Circuit : RootedDAG
         A circuit with a single output which has been decomposed into nand2 and
         inverter gates (AIG form).
-    library : CellLib
+    Library : CellLib
         A standard cell library to cover the circuit with.
 
     Returns
@@ -97,10 +97,10 @@ def min_area_cover(circuit: RootedDAG, library: CellLib) -> TreeCover:
     TreeCover
 
     """
-    cover = TreeCover(circuit, library)
+    cover = TreeCover(Circuit, Library)
     while (subject := cover.get_subject()) is not None:
-        for cell, pattern in library.items():
-            is_match, leaf_map = match(subject, pattern[0].root)
+        for cell, pattern in Library.items():
+            is_match, leaf_map = Match(subject, pattern[0].root)
             if is_match:
                 cover.try_cell(subject, cell, leaf_map)
     return cover
