@@ -50,7 +50,8 @@ def test_match(*, plot: bool = False) -> None:  # noqa: PLR0915
             ("s14", "s15"),
         ]
     )
-    nand6.draw(PLOT_DIR / "nand6.png")
+    if plot:
+        nand6.draw(PLOT_DIR / "nand6.png")
 
     match, _ = Match(get_node(nand6, "s13"), CELL_LIB["NAND4-A"][0].root)
     assert match
@@ -93,7 +94,8 @@ def test_match(*, plot: bool = False) -> None:  # noqa: PLR0915
             ("s12", "s13"),
         ]
     )
-    or4.draw(PLOT_DIR / "or4.png")
+    if plot:
+        or4.draw(PLOT_DIR / "or4.png")
 
     match, _ = Match(get_node(or4, "s13"), CELL_LIB["NAND4-A"][0].root)
     assert match
@@ -134,7 +136,8 @@ def test_match(*, plot: bool = False) -> None:  # noqa: PLR0915
             ("s10", "s11"),
         ]
     )
-    aoi22_and2.draw(PLOT_DIR / "aoi22_and2.png")
+    if plot:
+        aoi22_and2.draw(PLOT_DIR / "aoi22_and2.png")
 
     match, _ = Match(get_node(aoi22_and2, "s9"), CELL_LIB["AOI22"][0].root)
     assert match
@@ -170,7 +173,8 @@ def test_match(*, plot: bool = False) -> None:  # noqa: PLR0915
             ("s5", "s6"),
         ]
     )
-    aob21.draw(PLOT_DIR / "aob21.png")
+    if plot:
+        aob21.draw(PLOT_DIR / "aob21.png")
 
     match, _ = Match(get_node(aob21, "s4"), CELL_LIB["NAND2"][0].root)
     assert match
