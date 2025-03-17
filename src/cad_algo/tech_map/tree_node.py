@@ -21,9 +21,9 @@ class TreeNode:
         return f"{self.node_type} {self.name}"
 
     @property
-    def ancenstors(self) -> Generator["TreeNode"]:
+    def ancestors(self) -> Generator["TreeNode"]:
         """Yield all the ancestors of the TreeNode in the RootedDAG."""
-        yield from (x for x in nx.ancestors(self.graph, self.name))
+        yield from (x for x in nx.ancestors(self.graph, self))
 
     @property
     def degree(self) -> int:

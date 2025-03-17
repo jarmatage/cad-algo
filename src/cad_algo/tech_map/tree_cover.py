@@ -141,7 +141,7 @@ class TreeCover:
 
         """
         for node in (k for k, v in self._cost.items() if v < 0):
-            if all(self._cost[x] >= 0 for x in node.ancenstors):
+            if all(self._cost[x] >= 0 for x in node.ancestors):
                 return node
         return None
 
@@ -171,9 +171,32 @@ class TreeCover:
         is less than the current cost of the node, then the cost is updated and the
         libcell/leaf_map are saved.
 
+        If two libcells yield the same cost, the libcell with the higher area is chosen.
+        This ensures that more complex gates are chosen instead of the decomposed
+        version of the complex gate.
+
+        If two libcells yield the same cost and have the same area. The libcell with the
+        lower depth (levels of logic) is chosen. A gate with a lower depth is better for
+        timing.
+
         """
-        cost = self._library[libcell][1] + sum(self._cost[u] for u in leaf_map)
+        libcell_area = self._library[libcell][1]
+        cost = libcell_area + sum(self._cost[u] for u in leaf_map)
+
+        new_min = False
         if cost < self._cost[node] or self._cost[node] == -1:
+            new_min = True
+        elif cost == self._cost[node]:
+            current = self._libcells[node]
+            current_area = self._library[current][1]
+            if libcell_area > current_area:
+                new_min = True
+            elif libcell_area == current_area:
+                libcell_depth = nx.dag_longest_path(self._library[libcell][0])
+                current_depth = nx.dag_longest_path(self._library[current][0])
+                new_min = len(libcell_depth) < len(current_depth)
+
+        if new_min:
             self._cost[node] = cost
             self._libcells[node] = libcell
             self._leaves[node] = leaf_map
