@@ -118,12 +118,12 @@ class TreeCover:
         loops until the leaves (input pins) of the circuit are reached.
 
         """
-        libcell_v = self._libcells[node]
+        libcell_v = f"{self._libcells[node]}\n({node.name})"
         for subject in self._leaves[node]:
             if subject.is_type("leaf"):
                 cover.add_edge(subject.name, libcell_v)
             else:
-                libcell_u = self._libcells[subject]
+                libcell_u = f"{self._libcells[subject]}\n({subject.name})"
                 cover.add_edge(libcell_u, libcell_v)
                 self._get_cover_graph(cover, subject)
         return cover
