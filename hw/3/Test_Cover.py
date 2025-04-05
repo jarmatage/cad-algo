@@ -4,8 +4,9 @@ import argparse
 from pathlib import Path
 
 from tech_map.algorithms import MinAreaCover
-from tech_map.cell_lib import CELL_LIB
+from tech_map.cell_lib import CELL_LIB, CellLib
 from tech_map.rooted_dag import RootedDAG
+from tech_map.tree_cover import TreeCover
 from tech_map.tree_node import TreeNode
 
 # ruff: noqa: S101, SLF001, PLR2004
@@ -19,7 +20,7 @@ def get_node(circuit: RootedDAG, name: str) -> TreeNode:
     return node[0]
 
 
-def test_cover(*, plot: bool = False) -> None:
+def test_cover(*, plot: bool = False) -> None:  # noqa: PLR0915
     """Run unit tests on the tree covering algorithm."""
     for cell in CELL_LIB:
         dag = CELL_LIB[cell][0]
@@ -148,6 +149,50 @@ def test_cover(*, plot: bool = False) -> None:
     assert cover._libcells[get_node(aob21, "s6")] == "AOB21"
     if plot:
         cover.draw(PLOT_DIR / "aob21_cover_modified_lib.png")
+
+    # Create the circuit for HW3 Addendum Q3
+    circuit = RootedDAG(
+        [
+            ("s1", "s9"),
+            ("s2", "s9"),
+            ("s3", "s10"),
+            ("s4", "s10"),
+            ("s5", "s11"),
+            ("s6", "s12"),
+            ("s7", "s12"),
+            ("s8", "s15"),
+            ("s9", "s13"),
+            ("s10", "s13"),
+            ("s11", "s16"),
+            ("s12", "s14"),
+            ("s13", "s16"),
+            ("s14", "s15"),
+            ("s15", "s18"),
+            ("s16", "s17"),
+            ("s17", "s18"),
+        ]
+    )
+    print("\nHW3 Addendum:")
+    print("Subject, Optimal PG, Inputs, Area Cost")
+    cover = PrintCover_Out(circuit, CELL_LIB)
+    if plot:
+        cover.draw(PLOT_DIR / "addendum_cover.png")
+    print("\n")
+
+
+def PrintCover_Out(SG: RootedDAG, PG: CellLib) -> TreeCover:  # noqa: N802, N803
+    """Display the optimal mapping for every node in a subject graph."""
+    cover = MinAreaCover(SG, PG)
+    for node in sorted(SG.nodes, key=lambda x: int(x.name[1:])):
+        if node.is_type("leaf"):
+            print(f"{node.name:3}, input, [], 0")
+            continue
+        libcell = cover._libcells[node]
+        leaves = cover._leaves[node]
+        inputs = [x.name for x in leaves]
+        cost = cover._cost[node]
+        print(f"{node.name:3}, {libcell:5}, {inputs!s:19}, {cost}")
+    return cover
 
 
 if __name__ == "__main__":

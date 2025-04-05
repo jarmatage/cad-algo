@@ -192,6 +192,47 @@ def test_match(*, plot: bool = False) -> None:  # noqa: PLR0915
     assert not match
     print("node s6 in aob21 does not match AOI21")
 
+    # Create the circuit for HW3 Addendum Q3
+    circuit = RootedDAG(
+        [
+            ("s1", "s9"),
+            ("s2", "s9"),
+            ("s3", "s10"),
+            ("s4", "s10"),
+            ("s5", "s11"),
+            ("s6", "s12"),
+            ("s7", "s12"),
+            ("s8", "s15"),
+            ("s9", "s13"),
+            ("s10", "s13"),
+            ("s11", "s16"),
+            ("s12", "s14"),
+            ("s13", "s16"),
+            ("s14", "s15"),
+            ("s15", "s18"),
+            ("s16", "s17"),
+            ("s17", "s18"),
+        ]
+    )
+    if plot:
+        circuit.draw(PLOT_DIR / "addendum_circuit.png")
+
+    print("\nHW3 Addendum:")
+    print("LibCell, [matching subject nodes]")
+    for std_cell in CELL_LIB:
+        PrintMatch_Out(circuit, std_cell)
+    print("\n")
+
+
+def PrintMatch_Out(SG: RootedDAG, PG: str) -> None:  # noqa: N802, N803
+    """Find all nodes in a subject graph which match with a pattern graph."""
+    matches = []
+    for node in sorted(SG.nodes, key=lambda x: int(x.name[1:])):
+        match, _ = Match(node, CELL_LIB[PG][0].root)
+        if match:
+            matches.append(node.name)
+    print(f"{PG:7}, {matches}")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="test the tree matching algorithm")
