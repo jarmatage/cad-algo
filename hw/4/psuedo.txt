@@ -1,0 +1,33 @@
+# type : ignore
+# ruff : noqa
+
+import networkx as nx
+
+
+def ArrivalTimes(circuit: nx.DiGrpah[str], lib: StdCellLib) -> dict[str, float]:
+    return {node: 0 for node in circuit}
+
+
+def RequiredTimes(circuit: nx.DiGraph[str], lib: StdCellLib) -> dict[str, float]:
+    """Compute the required times for a given logic network and standard cell library."""
+    arrivals = ArrivalTimes(circuit, lib)
+
+    # Use the max arrival time of output pins as the required time for output pins
+    outputs = [node for node in circuit if circuit.out_degree(node) == 0]
+    max_arrival = max([arrivals[node] for node in outputs])
+    requireds = {node: max_arrival for node in circuit}
+
+    # recursively propagate backwards through the circuit in a breadth first manner
+    for output in outputs:
+        # iterate through all ancestors of an output node while keeping track of the
+        # sucessor node that we just came from.
+        for parent, child in bfs_timing_paths(output):
+            required = requireds[child] - lib[child]["delay"]
+
+            # If we have found an earlier required time, use that time for the node
+            # we then continue on to all ancestors of the node which propogates the
+            # new earlier required time through the circuit until we hit input nodes.
+            if required < requireds[parent]:
+                requireds[parent] = required
+
+    return requireds
