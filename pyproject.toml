@@ -8,6 +8,7 @@ name = "cad-algo"
 description = "Assignments for CEN 503"
 requires-python = ">=3.13"
 dependencies = [
+	"dd",
 	"lark",
 	"matplotlib",
 	"networkx",
